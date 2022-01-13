@@ -237,7 +237,7 @@ public class MigrationRuleListener implements RegistryProtocolListener, Configur
             ((MigrationInvoker<?>) invoker).setMigrationRuleListener(this);
             return new MigrationRuleHandler<>((MigrationInvoker<?>) invoker, consumerUrl);
         });
-
+        // 其实就是三种订阅模式的处理
         migrationRuleHandler.doMigrate(rule);
     }
 

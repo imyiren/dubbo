@@ -206,6 +206,7 @@ public class RegistryProtocol implements Protocol, ScopeModelAware {
     }
 
     private void register(Registry registry, URL registeredProviderUrl) {
+        // 先调用registerWrapper，然后调实际的zookeeper实现
         registry.register(registeredProviderUrl);
     }
 
@@ -217,16 +218,31 @@ public class RegistryProtocol implements Protocol, ScopeModelAware {
             registered));
     }
 
+
+    /**
+     * 主要处理：<dubbo:service interface="", ref=""/>
+     */
     @Override
     public <T> Exporter<T> export(final Invoker<T> originInvoker) throws RpcException {
+        /*
+        service-discovery-registry://10.11.11.18:2181/org.apache.dubbo.registry.RegistryService?application=my-producer&client=curator&...
+        zookeeper://10.11.11.18:2181/org.apache.dubbo.registry.RegistryService?application=my-producer&client=curator&...
+         */
         URL registryUrl = getRegistryUrl(originInvoker);
         // url to export locally
+        /*
+        dubbo://10.11.11.18:20880/demo.DemoService?anyhost=true&application=my-producer
+         */
         URL providerUrl = getProviderUrl(originInvoker);
 
         // Subscribe the override data
         // FIXME When the provider subscribes, it will affect the scene : a certain JVM exposes the service and call
         //  the same service. Because the subscribed is cached key with the name of the service, it causes the
         //  subscription information to cover.
+
+        /*
+         provider://10.11.11.18:20880/demo.DemoService?anyhost=true&application=my-producer
+         */
         final URL overrideSubscribeUrl = getSubscribedOverrideUrl(providerUrl);
         final OverrideListener overrideSubscribeListener = new OverrideListener(overrideSubscribeUrl, originInvoker);
         Map<URL, NotifyListener> overrideListeners = getProviderConfigurationListener(providerUrl).getOverrideListeners();
@@ -234,30 +250,45 @@ public class RegistryProtocol implements Protocol, ScopeModelAware {
 
         providerUrl = overrideUrlWithConfig(providerUrl, overrideSubscribeListener);
         //export invoker
+        // 暴露本地服务 netty -> consumer:  如：10.11.11.18:20880 暴露出去给别人调用 做JMI的暴露
         final ExporterChangeableWrapper<T> exporter = doLocalExport(originInvoker, providerUrl);
 
         // url to registry
+        // 获取注册中心的实现
         final Registry registry = getRegistry(registryUrl);
+        /*
+         两类registry
+            service-discovery-registry: ZookeeperServiceDiscovery
+            zookeeper: ZookeeperRegistry
+         */
+
+        // providerURL转化
         final URL registeredProviderUrl = getUrlToRegistry(providerUrl, registryUrl);
 
+        // 开始注册.......
         // decide if we need to delay publish
         boolean register = providerUrl.getParameter(REGISTER_KEY, true);
         if (register) {
+            // 服务提供者开始注册节点，这个节点现在与具体的谁作为注册中心无关。
             register(registry, registeredProviderUrl);
+            // 上面这步骤，执行完后 /dubbo或者/services 已经注册好了
         }
 
         // register stated url on provider model
+        // 修改状态
         registerStatedUrl(registryUrl, registeredProviderUrl, register);
 
-
+        // 注册的url和订阅的url 暴露给本地的exporter
         exporter.setRegisterUrl(registeredProviderUrl);
         exporter.setSubscribeUrl(overrideSubscribeUrl);
 
-        // Deprecated! Subscribe to override rules in 2.6.x or before.
+        // Deprecated! Subscribe to override rules in 2.6.x or before. 做通知！！！
         registry.subscribe(overrideSubscribeUrl, overrideSubscribeListener);
 
+        // provider -> [consumer1, consumer2] -> provider
         notifyExport(exporter);
         //Ensure that a new exporter instance is returned every time export
+        // 返回一个exporter
         return new DestroyableExporter<>(exporter);
     }
 
@@ -281,12 +312,25 @@ public class RegistryProtocol implements Protocol, ScopeModelAware {
         return serviceConfigurationListener.overrideUrl(providerUrl);
     }
 
+    /**
+     * 服务暴露流程核心逻辑
+     *
+     * @param originInvoker invoker
+     * @param providerUrl   providerURL
+     * @param <T>           泛型
+     * @return wrapper
+     */
     @SuppressWarnings("unchecked")
     private <T> ExporterChangeableWrapper<T> doLocalExport(final Invoker<T> originInvoker, URL providerUrl) {
+        // key: demo.DemoService:20880
         String key = getCacheKey(originInvoker);
 
+        //
         return (ExporterChangeableWrapper<T>) bounds.computeIfAbsent(key, s -> {
             Invoker<?> invokerDelegate = new InvokerDelegate<>(originInvoker, providerUrl);
+            // 根据协议：
+            // org.apache.dubbo.rpc.protocol.dubbo.DubboProtocol.export 默认配置
+            // org.apache.dubbo.rpc.protocol.tri.TripleProtocol.export
             return new ExporterChangeableWrapper<>((Exporter<T>) protocol.export(invokerDelegate), originInvoker);
         });
     }
@@ -486,6 +530,7 @@ public class RegistryProtocol implements Protocol, ScopeModelAware {
     protected <T> Invoker<T> doRefer(Cluster cluster, Registry registry, Class<T> type, URL url, Map<String, String> parameters) {
         Map<String, Object> consumerAttribute = new HashMap<>(url.getAttributes());
         consumerAttribute.remove(REFER_KEY);
+        // 参数构建
         URL consumerUrl = new ServiceConfigURL(parameters.get(PROTOCOL_KEY) == null ? DUBBO : parameters.get(PROTOCOL_KEY),
             null,
             null,
@@ -495,6 +540,7 @@ public class RegistryProtocol implements Protocol, ScopeModelAware {
             consumerAttribute);
         url = url.putAttribute(CONSUMER_URL_KEY, consumerUrl);
         ClusterInvoker<T> migrationInvoker = getMigrationInvoker(this, cluster, registry, type, url, consumerUrl);
+        // 进去
         return interceptInvoker(migrationInvoker, url, consumerUrl, url);
     }
 
@@ -525,7 +571,9 @@ public class RegistryProtocol implements Protocol, ScopeModelAware {
             return invoker;
         }
 
+        // 拿出所有protocl的Listener 去调用onRefer
         for (RegistryProtocolListener listener : listeners) {
+            // org.apache.dubbo.registry.client.migration.MigrationRuleListener.onRefer
             listener.onRefer(this, invoker, consumerUrl, registryURL);
         }
         return invoker;
@@ -533,12 +581,14 @@ public class RegistryProtocol implements Protocol, ScopeModelAware {
 
     public <T> ClusterInvoker<T> getServiceDiscoveryInvoker(Cluster cluster, Registry registry, Class<T> type, URL url) {
         DynamicDirectory<T> directory = new ServiceDiscoveryRegistryDirectory<>(type, url);
+        // ？进 统一入口，区分实现类
         return doCreateInvoker(directory, cluster, registry, type);
     }
 
     public <T> ClusterInvoker<T> getInvoker(Cluster cluster, Registry registry, Class<T> type, URL url) {
         // FIXME, this method is currently not used, create the right registry before enable.
         DynamicDirectory<T> directory = new RegistryDirectory<>(type, url);
+        // 进入 统一入口，区分实现类
         return doCreateInvoker(directory, cluster, registry, type);
     }
 
@@ -557,6 +607,10 @@ public class RegistryProtocol implements Protocol, ScopeModelAware {
             registry.register(directory.getRegisteredConsumerUrl());
         }
         directory.buildRouterChain(urlToRegistry);
+
+        // 真正的订阅流程 对应不同的订阅方式 使用不同的实现类。一个是interface 一个是 application
+        // RegistryDirectory.subscribe
+        // ServiceDiscoveryRegistryDirectory.subscribe
         directory.subscribe(toSubscribeUrl(urlToRegistry));
 
         return (ClusterInvoker<T>) cluster.join(directory, true);

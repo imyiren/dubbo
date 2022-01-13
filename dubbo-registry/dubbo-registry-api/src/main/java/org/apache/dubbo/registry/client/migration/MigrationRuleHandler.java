@@ -43,7 +43,7 @@ public class MigrationRuleHandler<T> {
             return;
         }
 
-        // initial step : APPLICATION_FIRST
+        // initial step : APPLICATION_FIRST 应用优先（默认的！！）
         MigrationStep step = MigrationStep.APPLICATION_FIRST;
         float threshold = -1f;
 
@@ -54,6 +54,7 @@ public class MigrationRuleHandler<T> {
             logger.error("Failed to get step and threshold info from rule: " + rule, e);
         }
 
+        // 刷新调用方
         if (refreshInvoker(step, threshold, rule)) {
             // refresh success, update rule
             setMigrationRule(rule);
@@ -68,8 +69,11 @@ public class MigrationRuleHandler<T> {
 
         if ((currentStep == null || currentStep != step) || !currentThreshold.equals(threshold)) {
             boolean success = true;
+            // 三种订阅模式的处理
             switch (step) {
+                // 这一种 包括了下面两种
                 case APPLICATION_FIRST:
+                    // ServiceDiscoveryMigrationInvoker.migrateToApplicationFirstInvoker
                     migrationInvoker.migrateToApplicationFirstInvoker(newRule);
                     break;
                 case FORCE_APPLICATION:

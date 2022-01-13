@@ -66,6 +66,7 @@ public class Exchangers {
             throw new IllegalArgumentException("handler == null");
         }
         url = url.addParameterIfAbsent(Constants.CODEC_KEY, "exchange");
+        // org.apache.dubbo.remoting.exchange.support.header.HeaderExchanger.bind
         return getExchanger(url).bind(url, handler);
     }
 

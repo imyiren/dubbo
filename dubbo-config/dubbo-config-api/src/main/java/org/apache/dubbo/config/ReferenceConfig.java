@@ -198,7 +198,7 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
         if (destroyed) {
             throw new IllegalStateException("The invoker of ReferenceConfig(" + url + ") has already destroyed!");
         }
-
+        // init
         if (ref == null) {
             init();
         }
@@ -263,6 +263,7 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
 
         serviceMetadata.getAttachments().putAll(referenceParameters);
 
+        // 创建ref的代理对象 入参就是一些配置元数据信息 包括ip等数据
         ref = createProxy(referenceParameters);
 
         serviceMetadata.setTarget(ref);
@@ -363,8 +364,10 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
 
     @SuppressWarnings({"unchecked"})
     private T createProxy(Map<String, String> referenceParameters) {
+        // 本地暴露
         if (shouldJvmRefer(referenceParameters)) {
             createInvokerForLocal(referenceParameters);
+
         } else {
             urls.clear();
             if (url != null && url.length() > 0) {
@@ -376,6 +379,7 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
                     aggregateUrlFromRegistry(referenceParameters);
                 }
             }
+            // 远程调用
             createInvokerForRemote();
         }
 
@@ -389,7 +393,7 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
         consumerUrl = consumerUrl.setServiceModel(consumerModel);
         MetadataUtils.publishServiceDefinition(consumerUrl);
 
-        // create service proxy
+        // create service proxy  走的是Java assist Proxy
         return (T) proxyFactory.getProxy(invoker, ProtocolUtils.isGeneric(generic));
     }
 
@@ -418,6 +422,7 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
      * Parse the directly configured url.
      */
     private void parseUrl(Map<String, String> referenceParameters) {
+        // dubbo://localhost:20880;dubbo://localhost:20881
         String[] us = SEMICOLON_SPLIT_PATTERN.split(url);
         if (us != null && us.length > 0) {
             for (String u : us) {
@@ -471,6 +476,8 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
     private void createInvokerForRemote() {
         if (urls.size() == 1) {
             URL curUrl = urls.get(0);
+            // 这个地方的interfaceClass就是我们的服务 demo.DemoService
+            // 服务订阅和调用远程代理
             invoker = protocolSPI.refer(interfaceClass,curUrl);
             if (!UrlUtils.isRegistry(curUrl)){
                 List<Invoker<?>> invokers = new ArrayList<>();
@@ -478,11 +485,13 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
                 invoker = Cluster.getCluster(scopeModel, Cluster.DEFAULT).join(new StaticDirectory(curUrl, invokers), true);
             }
         } else {
+            // 如果url不为1时，他就会去循环获取。
             List<Invoker<?>> invokers = new ArrayList<>();
             URL registryUrl = null;
             for (URL url : urls) {
                 // For multi-registry scenarios, it is not checked whether each referInvoker is available.
                 // Because this invoker may become available later.
+                // protocol
                 invokers.add(protocolSPI.refer(interfaceClass, url));
 
                 if (UrlUtils.isRegistry(url)) {

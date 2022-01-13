@@ -54,6 +54,7 @@ public abstract class AbstractServer extends AbstractEndpoint implements Remotin
     public AbstractServer(URL url, ChannelHandler handler) throws RemotingException {
         super(url, handler);
         executorRepository = url.getOrDefaultApplicationModel().getExtensionLoader(ExecutorRepository.class).getDefaultExtension();
+        // 获取本机地址
         localAddress = getUrl().toInetSocketAddress();
 
         String bindIp = getUrl().getParameter(Constants.BIND_IP_KEY, getUrl().getHost());
@@ -64,6 +65,7 @@ public abstract class AbstractServer extends AbstractEndpoint implements Remotin
         bindAddress = new InetSocketAddress(bindIp, bindPort);
         this.accepts = url.getParameter(ACCEPTS_KEY, DEFAULT_ACCEPTS);
         try {
+            // org.apache.dubbo.remoting.transport.netty4.NettyServer.doOpen
             doOpen();
             if (logger.isInfoEnabled()) {
                 logger.info("Start " + getClass().getSimpleName() + " bind " + getBindAddress() + ", export " + getLocalAddress());

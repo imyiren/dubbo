@@ -84,10 +84,12 @@ public class ServiceBean<T> extends ServiceConfig<T> implements InitializingBean
     public void afterPropertiesSet() throws Exception {
         if (StringUtils.isEmpty(getPath())) {
             if (StringUtils.isNotEmpty(getInterface())) {
+                // demo.DemoService
                 setPath(getInterface());
             }
         }
         //register service bean
+        // 配置dubbo boostrap的过程，并且初始化一个dubbo的单例服务器，注册当前的Service
         ModuleModel moduleModel = DubboBeanUtils.getModuleModel(applicationContext);
         moduleModel.getConfigManager().addService(this);
         moduleModel.getDeployer().setPending();

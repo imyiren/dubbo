@@ -157,6 +157,7 @@ public abstract class DynamicDirectory<T> extends AbstractDirectory<T> implement
 
     public void subscribe(URL url) {
         setSubscribeUrl(url);
+        // ？org.apache.dubbo.registry.client.ServiceDiscoveryRegistry.subscribe
         registry.subscribe(url, this);
     }
 

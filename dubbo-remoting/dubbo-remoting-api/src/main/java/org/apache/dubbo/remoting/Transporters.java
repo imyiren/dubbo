@@ -52,6 +52,7 @@ public class Transporters {
         } else {
             handler = new ChannelHandlerDispatcher(handlers);
         }
+        // 进入 org.apache.dubbo.remoting.transport.netty4.NettyTransporter.bind
         return getTransporter(url).bind(url, handler);
     }
 

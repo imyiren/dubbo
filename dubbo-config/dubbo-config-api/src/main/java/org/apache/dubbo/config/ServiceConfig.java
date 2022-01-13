@@ -375,6 +375,9 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
         exported();
     }
 
+    /**
+     * <dubbo:service interface=""..../>
+     */
     @SuppressWarnings({"unchecked", "rawtypes"})
     private void doExportUrls() {
         ModuleServiceRepository repository = getScopeModel().getServiceRepository();
@@ -387,7 +390,7 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
             serviceMetadata);
 
         repository.registerProvider(providerModel);
-
+        // 获取注册的URL
         List<URL> registryURLs = ConfigValidationUtils.loadRegistries(this, true);
 
         for (ProtocolConfig protocolConfig : protocols) {
@@ -566,16 +569,20 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
         return url;
     }
 
+    //
     private void exportUrl(URL url, List<URL> registryURLs) {
         String scope = url.getParameter(SCOPE_KEY);
         // don't export when none is configured
         if (!SCOPE_NONE.equalsIgnoreCase(scope)) {
 
+
+            // in jvm调用
             // export to local if the config is not remote (export to remote only when config is remote)
             if (!SCOPE_REMOTE.equalsIgnoreCase(scope)) {
                 exportLocal(url);
             }
 
+            // 远程调用
             // export to remote if the config is not local (export to local only when config is local)
             if (!SCOPE_LOCAL.equalsIgnoreCase(scope)) {
                 url = exportRemote(url, registryURLs);
@@ -640,16 +647,23 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     private void doExportUrl(URL url, boolean withMetaData) {
+        // JavassistProxyFactory
         Invoker<?> invoker = proxyFactory.getInvoker(ref, (Class) interfaceClass, url);
+        // DemoService的代理类
+
         if (withMetaData) {
             invoker = new DelegateProviderMetaDataInvoker(invoker, this);
         }
+        // InjvmProtocol#export
+        // org.apache.dubbo.registry.integration.RegistryProtocol.export
         Exporter<?> exporter = protocolSPI.export(invoker);
+        // 整个的暴露服务的列表
         exporters.add(exporter);
     }
 
 
     /**
+     * 本地暴露
      * always export injvm
      */
     private void exportLocal(URL url) {
@@ -658,6 +672,7 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
                 .setHost(LOCALHOST_VALUE)
                 .setPort(0)
                 .build();
+        // injvm://hostname:port/demo.DemoService?xxx....&scope=local
         local = local.setScopeModel(getScopeModel())
             .setServiceModel(providerModel);
         doExportUrl(local, false);

@@ -440,6 +440,7 @@ public abstract class AbstractRegistry implements Registry {
             // We will update our cache file after each notification.
             // When our Registry has a subscribe failure due to network jitter, we can return at least the existing cache URL.
             if (localCacheEnabled) {
+                // ？
                 saveProperties(url);
             }
         }
@@ -466,6 +467,9 @@ public abstract class AbstractRegistry implements Registry {
             properties.setProperty(url.getServiceKey(), buf.toString());
             long version = lastCacheChanged.incrementAndGet();
             if (syncSaveFile) {
+                // ？保存 服务URL的信息 注册中心的信息 从注册中心一次性拉取信息，变更的时候回同时修改内存和文件
+                // 减少访问 注册中心（zookeeper） 的压力
+                // 在注册中心挂了之后 也可以通过访问文件去获取信息
                 doSaveProperties(version);
             } else {
                 registryCacheExecutor.execute(new SaveProperties(version));

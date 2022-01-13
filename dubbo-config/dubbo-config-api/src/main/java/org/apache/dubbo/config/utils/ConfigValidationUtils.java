@@ -189,6 +189,7 @@ public class ConfigValidationUtils {
 
     public static List<URL> loadRegistries(AbstractInterfaceConfig interfaceConfig, boolean provider) {
         // check && override if necessary
+        // 获取registry为协议的注册URL
         List<URL> registryList = new ArrayList<URL>();
         ApplicationConfig application = interfaceConfig.getApplication();
         List<RegistryConfig> registries = interfaceConfig.getRegistries();
@@ -223,6 +224,7 @@ public class ConfigValidationUtils {
                 }
             }
         }
+        // 生成第二个注册协议的URL
         return genCompatibleRegistries(interfaceConfig.getScopeModel(), registryList, provider);
     }
 
@@ -232,6 +234,7 @@ public class ConfigValidationUtils {
             if (provider) {
                 // for registries enabled service discovery, automatically register interface compatible addresses.
                 String registerMode;
+                // service-discovery-registry://
                 if (SERVICE_REGISTRY_PROTOCOL.equals(registryURL.getProtocol())) {
                     registerMode = registryURL.getParameter(REGISTER_MODE_KEY, ConfigurationUtils.getCachedDynamicProperty(scopeModel, DUBBO_REGISTER_MODE_DEFAULT_KEY, DEFAULT_REGISTER_MODE_INSTANCE));
                     if (!isValidRegisterMode(registerMode)) {
@@ -247,19 +250,21 @@ public class ConfigValidationUtils {
                         result.add(interfaceCompatibleRegistryURL);
                     }
                 } else {
+                    // instance interface all
                     registerMode = registryURL.getParameter(REGISTER_MODE_KEY, ConfigurationUtils.getCachedDynamicProperty(scopeModel, DUBBO_REGISTER_MODE_DEFAULT_KEY, DEFAULT_REGISTER_MODE_ALL));
                     if (!isValidRegisterMode(registerMode)) {
                         registerMode = DEFAULT_REGISTER_MODE_INTERFACE;
                     }
                     if ((DEFAULT_REGISTER_MODE_INSTANCE.equalsIgnoreCase(registerMode) || DEFAULT_REGISTER_MODE_ALL.equalsIgnoreCase(registerMode))
                         && registryNotExists(registryURL, registryList, SERVICE_REGISTRY_PROTOCOL)) {
+                        // 构建 service-discovery-registry://
                         URL serviceDiscoveryRegistryURL = URLBuilder.from(registryURL)
                             .setProtocol(SERVICE_REGISTRY_PROTOCOL)
                             .removeParameter(REGISTRY_TYPE_KEY)
                             .build();
                         result.add(serviceDiscoveryRegistryURL);
                     }
-
+                    // 构建 registry://
                     if (DEFAULT_REGISTER_MODE_INTERFACE.equalsIgnoreCase(registerMode) || DEFAULT_REGISTER_MODE_ALL.equalsIgnoreCase(registerMode)) {
                         result.add(registryURL);
                     }

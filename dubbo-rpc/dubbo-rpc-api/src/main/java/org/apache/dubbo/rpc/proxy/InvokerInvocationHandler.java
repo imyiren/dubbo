@@ -35,10 +35,13 @@ import java.lang.reflect.Method;
  */
 public class InvokerInvocationHandler implements InvocationHandler {
     private static final Logger logger = LoggerFactory.getLogger(InvokerInvocationHandler.class);
+    /**
+     * wrapper和本地代理对象的封装
+     */
     private final Invoker<?> invoker;
-    private ServiceModel serviceModel;
-    private URL url;
-    private String protocolServiceKey;
+    private final ServiceModel serviceModel;
+    private final URL url;
+    private final String protocolServiceKey;
 
     public static Field stackTraceField;
 
@@ -77,6 +80,7 @@ public class InvokerInvocationHandler implements InvocationHandler {
         } else if (parameterTypes.length == 1 && "equals".equals(methodName)) {
             return invoker.equals(args[0]);
         }
+        // 封装执行逻辑
         RpcInvocation rpcInvocation = new RpcInvocation(serviceModel, method, invoker.getInterface().getName(), protocolServiceKey, args);
         String serviceKey = url.getServiceKey();
         rpcInvocation.setTargetServiceUniqueName(serviceKey);
@@ -89,6 +93,7 @@ public class InvokerInvocationHandler implements InvocationHandler {
             rpcInvocation.put(Constants.METHOD_MODEL, ((ConsumerModel) serviceModel).getMethodModel(method));
         }
 
+        // rpc的调用
         return invoker.invoke(rpcInvocation).recreate();
     }
 }

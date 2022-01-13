@@ -292,9 +292,14 @@ public abstract class FailbackRegistry extends AbstractRegistry {
     @Override
     public void subscribe(URL url, NotifyListener listener) {
         super.subscribe(url, listener);
+        // 如果出现失败的话，把订阅内容放到重试队列里面，timer到了会去重试
+        // 所以真正在订阅的时候，要确保失败队列里面没有重试，所以要把当前的URL级Listener给去除
+        // 后面会在catch Exception中再加回来
         removeFailedSubscribed(url, listener);
         try {
             // Sending a subscription request to the server side
+            // 调用具体的实现类。与注册中心的类型相关。
+            // zookeeper: org.apache.dubbo.registry.zookeeper.ZookeeperRegistry.doSubscribe
             doSubscribe(url, listener);
         } catch (Exception e) {
             Throwable t = e;
@@ -317,7 +322,7 @@ public abstract class FailbackRegistry extends AbstractRegistry {
                     logger.error("Failed to subscribe " + url + ", waiting for retry, cause: " + t.getMessage(), t);
                 }
             }
-
+            // 加入重试队列
             // Record a failed registration request to a failed list, retry regularly
             addFailedSubscribed(url, listener);
         }

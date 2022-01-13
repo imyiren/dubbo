@@ -147,9 +147,12 @@ public class ZookeeperRegistry extends CacheableFailbackRegistry {
     public void doSubscribe(final URL url, final NotifyListener listener) {
         try {
             checkDestroyed();
+            // 订阅所有 给monitor使用的。监控所有内容
             if (ANY_VALUE.equals(url.getServiceInterface())) {
+                // 订阅root节点 "/dubbo" 下面所有的子节点
                 String root = toRootPath();
                 boolean check = url.getParameter(CHECK_KEY, false);
+                // 当前节点和子节点
                 ConcurrentMap<NotifyListener, ChildListener> listeners = zkListeners.computeIfAbsent(url, k -> new ConcurrentHashMap<>());
                 ChildListener zkListener = listeners.computeIfAbsent(listener, k -> (parentPath, currentChilds) -> {
                     for (String child : currentChilds) {
@@ -161,12 +164,15 @@ public class ZookeeperRegistry extends CacheableFailbackRegistry {
                         }
                     }
                 });
+                // 为了兼容 不存在的时候创建/dubbo
                 zkClient.create(root, false);
+                // 添加child Listenr
                 List<String> services = zkClient.addChildListener(root, zkListener);
                 if (CollectionUtils.isNotEmpty(services)) {
                     for (String service : services) {
                         service = URL.decode(service);
                         anyServices.add(service);
+                        // 这个会形成递归
                         subscribe(url.setPath(service).addParameters(INTERFACE_KEY, service,
                             Constants.CHECK_KEY, String.valueOf(check)), listener);
                     }
@@ -174,19 +180,25 @@ public class ZookeeperRegistry extends CacheableFailbackRegistry {
             } else {
                 CountDownLatch latch = new CountDownLatch(1);
                 try {
+                    // url->单个服务： /demo.DemoService
+                    // providers consumers configurations...
                     List<URL> urls = new ArrayList<>();
                     for (String path : toCategoriesPath(url)) {
+                        // 针对服务下的child（providers consumers...）进行变更订阅
                         ConcurrentMap<NotifyListener, ChildListener> listeners = zkListeners.computeIfAbsent(url, k -> new ConcurrentHashMap<>());
                         ChildListener zkListener = listeners.computeIfAbsent(listener, k -> new RegistryChildListenerImpl(url, path, k, latch));
                         if (zkListener instanceof RegistryChildListenerImpl) {
                             ((RegistryChildListenerImpl) zkListener).setLatch(latch);
                         }
                         zkClient.create(path, false);
+                        // 向zk注册watcher
                         List<String> children = zkClient.addChildListener(path, zkListener);
                         if (children != null) {
                             urls.addAll(toUrlsWithEmpty(url, path, children));
                         }
                     }
+                    // ？？？org.apache.dubbo.registry.support.AbstractRegistry.notify
+                    // 会在内存和本地文件保存一份注册中心的信息。
                     notify(url, listener, urls);
                 } finally {
                     // tells the listener to run only after the sync notification of main thread finishes.

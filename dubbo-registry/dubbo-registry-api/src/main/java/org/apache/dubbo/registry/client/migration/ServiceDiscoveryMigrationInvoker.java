@@ -54,6 +54,7 @@ public class ServiceDiscoveryMigrationInvoker<T> extends MigrationInvoker<T> {
     @Override
     public void migrateToApplicationFirstInvoker(MigrationRule newRule) {
         CountDownLatch latch = new CountDownLatch(0);
+        // 刷新调用
         refreshServiceDiscoveryInvoker(latch);
 
         setCurrentAvailableInvoker(getServiceDiscoveryInvoker());

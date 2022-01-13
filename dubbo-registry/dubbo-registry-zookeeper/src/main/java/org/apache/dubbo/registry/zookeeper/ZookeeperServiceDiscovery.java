@@ -203,6 +203,7 @@ public class ZookeeperServiceDiscovery extends AbstractServiceDiscovery {
         }
 
         CountDownLatch latch = new CountDownLatch(1);
+        // 创建watcher
         ZookeeperServiceDiscoveryChangeWatcher watcher = watcherCaches.computeIfAbsent(path, key -> {
             ZookeeperServiceDiscoveryChangeWatcher tmpWatcher = new ZookeeperServiceDiscoveryChangeWatcher(this, serviceName, path, latch);
             try {
@@ -218,6 +219,7 @@ public class ZookeeperServiceDiscovery extends AbstractServiceDiscovery {
             return tmpWatcher;
         });
         watcher.addListener(listener);
+        // 注册一个Event
         listener.onEvent(new ServiceInstancesChangedEvent(serviceName, this.getInstances(serviceName)));
         latch.countDown();
     }

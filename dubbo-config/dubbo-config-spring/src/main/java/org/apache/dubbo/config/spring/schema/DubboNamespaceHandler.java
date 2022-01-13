@@ -50,8 +50,13 @@ public class DubboNamespaceHandler extends NamespaceHandlerSupport implements Co
         Version.checkDuplicate(DubboNamespaceHandler.class);
     }
 
+    /**
+     * <dubbo:application .../>
+     * <dubbo:service .../>
+     */
     @Override
     public void init() {
+        // 加载基本的配置信息
         registerBeanDefinitionParser("application", new DubboBeanDefinitionParser(ApplicationConfig.class));
         registerBeanDefinitionParser("module", new DubboBeanDefinitionParser(ModuleConfig.class));
         registerBeanDefinitionParser("registry", new DubboBeanDefinitionParser(RegistryConfig.class));
@@ -63,6 +68,11 @@ public class DubboNamespaceHandler extends NamespaceHandlerSupport implements Co
         registerBeanDefinitionParser("provider", new DubboBeanDefinitionParser(ProviderConfig.class));
         registerBeanDefinitionParser("consumer", new DubboBeanDefinitionParser(ConsumerConfig.class));
         registerBeanDefinitionParser("protocol", new DubboBeanDefinitionParser(ProtocolConfig.class));
+        // 业务流程处理
+        /*
+            <dubbo:service/> 对应 ServiceBean
+                ServiceBean实现了 spring的回调和自己的config信息
+         */
         registerBeanDefinitionParser("service", new DubboBeanDefinitionParser(ServiceBean.class));
         registerBeanDefinitionParser("reference", new DubboBeanDefinitionParser(ReferenceBean.class));
         registerBeanDefinitionParser("annotation", new AnnotationBeanDefinitionParser());

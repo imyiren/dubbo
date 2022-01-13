@@ -135,6 +135,7 @@ public class DefaultModuleDeployer extends AbstractDeployer<ModuleModel> impleme
         initialize();
 
         // export services
+        // 对应provider注册流程
         exportServices();
 
         // prepare application instance
@@ -277,6 +278,7 @@ public class DefaultModuleDeployer extends AbstractDeployer<ModuleModel> impleme
             asyncExportingFutures.add(future);
         } else {
             if (!sc.isExported()) {
+                // 暴露服务
                 sc.exportOnly();
                 exportedServices.add(sc);
             }
@@ -302,14 +304,16 @@ public class DefaultModuleDeployer extends AbstractDeployer<ModuleModel> impleme
         asyncExportingFutures.clear();
     }
 
-    private void referServices() {
+    private void  referServices() {
+        // 获取<dubbo:reference interface=""/> 并遍历
         configManager.getReferences().forEach(rc -> {
             try {
+                //
                 ReferenceConfig<?> referenceConfig = (ReferenceConfig<?>) rc;
                 if (!referenceConfig.isRefreshed()) {
                     referenceConfig.refresh();
                 }
-
+                // 启动时 初始化
                 if (rc.shouldInit()) {
                     if (referAsync || rc.shouldReferAsync()) {
                         ExecutorService executor = executorRepository.getServiceReferExecutor();
@@ -323,6 +327,7 @@ public class DefaultModuleDeployer extends AbstractDeployer<ModuleModel> impleme
 
                         asyncReferringFutures.add(future);
                     } else {
+                        // 判断cache有没有，如果没有就放进去
                         referenceCache.get(rc);
                     }
                 }

@@ -198,6 +198,7 @@ public class ServiceDiscoveryRegistry extends FailbackRegistry {
             return;
         }
         url = addRegistryClusterKey(url);
+        // 进
         doSubscribe(url, listener);
     }
 
@@ -221,7 +222,7 @@ public class ServiceDiscoveryRegistry extends FailbackRegistry {
             }
             return;
         }
-
+        // 订阅URLS
         subscribeURLs(url, listener, subscribedServices);
     }
 
@@ -279,24 +280,33 @@ public class ServiceDiscoveryRegistry extends FailbackRegistry {
 
     protected void subscribeURLs(URL url, NotifyListener listener, Set<String> serviceNames) {
         serviceNames = new TreeSet<>(serviceNames);
+        // 缓存应用名称
+        // 如：[app-producer1, app-producer2]
         String serviceNamesKey = toStringKeys(serviceNames);
+        //
         String protocolServiceKey = url.getServiceKey() + GROUP_CHAR_SEPARATOR + url.getParameter(PROTOCOL_KEY, DUBBO);
 
         // register ServiceInstancesChangedListener
         boolean serviceListenerRegistered = true;
         ServiceInstancesChangedListener serviceInstancesChangedListener;
         synchronized (this) {
+            // 看下应用里面有没有我们的监听器，如果没有就去加一个serviceDiscovery.createListener
             serviceInstancesChangedListener = serviceListeners.get(serviceNamesKey);
             if (serviceInstancesChangedListener == null) {
+                // org.apache.dubbo.registry.multiple.MultipleServiceDiscovery.createListener
                 serviceInstancesChangedListener = serviceDiscovery.createListener(serviceNames);
                 serviceInstancesChangedListener.setUrl(url);
+                // 整个servicesName去循环处理 Instance的信息 ip port 等
                 for (String serviceName : serviceNames) {
                     List<ServiceInstance> serviceInstances = serviceDiscovery.getInstances(serviceName);
                     if (CollectionUtils.isNotEmpty(serviceInstances)) {
+                        // 建立Event机制，类似于watcher机制
+                        // org.apache.dubbo.registry.client.event.listener.ServiceInstancesChangedListener.onEvent
                         serviceInstancesChangedListener.onEvent(new ServiceInstancesChangedEvent(serviceName, serviceInstances));
                     }
                 }
                 serviceListenerRegistered = false;
+                // 添加到listener的李彪中去
                 serviceListeners.put(serviceNamesKey, serviceInstancesChangedListener);
             }
         }
@@ -305,6 +315,8 @@ public class ServiceDiscoveryRegistry extends FailbackRegistry {
         listener.addServiceListener(serviceInstancesChangedListener);
         serviceInstancesChangedListener.addListenerAndNotify(protocolServiceKey, listener);
         if (!serviceListenerRegistered) {
+            // ？去注册监听器
+            // org.apache.dubbo.registry.zookeeper.ZookeeperServiceDiscovery.addServiceInstancesChangedListener
             serviceDiscovery.addServiceInstancesChangedListener(serviceInstancesChangedListener);
         }
     }

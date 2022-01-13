@@ -290,14 +290,17 @@ public class DubboProtocol extends AbstractProtocol {
     @Override
     public <T> Exporter<T> export(Invoker<T> invoker) throws RpcException {
         checkDestroyed();
+        // 获取URL：dubbo://localhost:20880/xxx?xx...
         URL url = invoker.getUrl();
 
         // export service.
+        // key demo.DemoService:20880
         String key = serviceKey(url);
         DubboExporter<T> exporter = new DubboExporter<T>(invoker, key, exporterMap);
+        // 缓存 key->exporter
         exporterMap.put(key, exporter);
 
-        //export an stub service for dispatching event
+        //export a stub service for dispatching event
         Boolean isStubSupportEvent = url.getParameter(STUB_EVENT_KEY, DEFAULT_STUB_EVENT);
         Boolean isCallbackservice = url.getParameter(IS_CALLBACK_SERVICE, false);
         if (isStubSupportEvent && !isCallbackservice) {
@@ -311,6 +314,7 @@ public class DubboProtocol extends AbstractProtocol {
             }
         }
 
+        // 开启服务
         openServer(url);
         optimizeSerialization(url);
 
@@ -321,9 +325,11 @@ public class DubboProtocol extends AbstractProtocol {
         checkDestroyed();
         // find server.
         String key = url.getAddress();
+        //
         //client can export a service which's only for server to invoke
         boolean isServer = url.getParameter(IS_SERVER_KEY, true);
         if (isServer) {
+            // 判断server是否已经初始化过了
             ProtocolServer server = serverMap.get(key);
             if (server == null) {
                 synchronized (this) {
@@ -348,6 +354,7 @@ public class DubboProtocol extends AbstractProtocol {
     }
 
     private ProtocolServer createServer(URL url) {
+        // URL构建
         url = URLBuilder.from(url)
                 // send readonly event when server closes, it's enabled by default
                 .addParameterIfAbsent(CHANNEL_READONLYEVENT_SENT_KEY, Boolean.TRUE.toString())
@@ -361,8 +368,10 @@ public class DubboProtocol extends AbstractProtocol {
             throw new RpcException("Unsupported server type: " + str + ", url: " + url);
         }
 
+        //
         ExchangeServer server;
         try {
+            // 绑定处理器
             server = Exchangers.bind(url, requestHandler);
         } catch (RemotingException e) {
             throw new RpcException("Fail to start server(url: " + url + ") " + e.getMessage(), e);

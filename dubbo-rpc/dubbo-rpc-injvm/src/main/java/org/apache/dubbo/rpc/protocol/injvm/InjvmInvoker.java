@@ -80,10 +80,12 @@ public class InjvmInvoker<T> extends AbstractInvoker<T> {
 
     @Override
     public Result doInvoke(Invocation invocation) throws Throwable {
+        // 内存中获取对应的exporter
         Exporter<?> exporter = InjvmProtocol.getExporter(exporterMap, getUrl());
         if (exporter == null) {
             throw new RpcException("Service [" + key + "] not found.");
         }
+        // 设置本地地址
         RpcContext.getServiceContext().setRemoteAddress(LOCALHOST_VALUE, 0);
         // Solve local exposure, the server opens the token, and the client call fails.
         Invoker<?> invoker = exporter.getInvoker();
@@ -98,6 +100,7 @@ public class InjvmInvoker<T> extends AbstractInvoker<T> {
         // recreate invocation ---> deep copy parameters
         Invocation copiedInvocation = recreateInvocation(invocation, invoker, desc);
 
+        // 异步
         if (isAsync(invoker.getUrl(), getUrl())) {
             ((RpcInvocation) copiedInvocation).setInvokeMode(InvokeMode.ASYNC);
             // use consumer executor
@@ -117,6 +120,7 @@ public class InjvmInvoker<T> extends AbstractInvoker<T> {
             result.setExecutor(executor);
             return result;
         } else {
+            // 非异步
             Result result = invoker.invoke(copiedInvocation);
             if (result.hasException()) {
                 return result;

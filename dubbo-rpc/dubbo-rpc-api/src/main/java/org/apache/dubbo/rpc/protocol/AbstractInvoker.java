@@ -212,6 +212,7 @@ public abstract class AbstractInvoker<T> implements Invoker<T> {
     private AsyncRpcResult doInvokeAndReturn(RpcInvocation invocation) {
         AsyncRpcResult asyncResult;
         try {
+            // 核心路径 injvm remote
             asyncResult = (AsyncRpcResult) doInvoke(invocation);
         } catch (InvocationTargetException e) {
             Throwable te = e.getTargetException();

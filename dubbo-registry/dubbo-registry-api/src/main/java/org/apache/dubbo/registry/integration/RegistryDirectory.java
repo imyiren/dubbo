@@ -32,6 +32,7 @@ import org.apache.dubbo.common.utils.NetUtils;
 import org.apache.dubbo.common.utils.StringUtils;
 import org.apache.dubbo.common.utils.UrlUtils;
 import org.apache.dubbo.registry.AddressListener;
+import org.apache.dubbo.registry.support.AbstractRegistry;
 import org.apache.dubbo.remoting.Constants;
 import org.apache.dubbo.rpc.Invocation;
 import org.apache.dubbo.rpc.Invoker;
@@ -116,6 +117,8 @@ public class RegistryDirectory<T> extends DynamicDirectory<T> {
         setSubscribeUrl(url);
         consumerConfigurationListener.addNotifyListener(this);
         referenceConfigurationListener = new ReferenceConfigurationListener(url.getOrDefaultModuleModel(), this, url);
+        // AbstractRegistry.subscribe()
+        // org.apache.dubbo.registry.support.FailbackRegistry.subscribe
         registry.subscribe(url, this);
     }
 
